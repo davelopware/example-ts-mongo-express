@@ -24,6 +24,13 @@ router.get('/api/books', async (req, res) => {
     return res.send(books.map((rec) => getJustFields(rec,outFields)));
 });
 
+router.get('/api/books/:isbn', async (req, res) => {
+    const isbn:string = req.params.isbn;
+    const book = await BookModel.findOne({isbn});
+    console.log(book);
+    return res.send(getJustFields(book,outFields));
+});
+
 router.post('/api/books', async (req, res) => {
     const book = new BookModel(getJustFields(req.body,inFields));
 

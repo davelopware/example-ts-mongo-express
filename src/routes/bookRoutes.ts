@@ -1,6 +1,7 @@
 import express from 'express';
 import BookModel, { IBookModel } from '../models/bookModel';
 import { getJustFields } from './routeHelpers';
+import { HateoasResourceHandler, HateoasLink } from '../rest/hateoasResourceHandler';
 
 const router = express.Router();
 
@@ -8,6 +9,7 @@ const inFields = [
     'isbn',
     'title',
     'desc',
+    'authorId',
 ];
 
 const outFields = [
@@ -28,7 +30,25 @@ router.get('/api/books/:isbn', async (req, res) => {
     const isbn:string = req.params.isbn;
     const book = await BookModel.findOne({isbn});
     console.log(book);
-    return res.send(getJustFields(book,outFields));
+    if (book == null) {
+        return res.status(404).send();
+    } else {
+        // return res.send(getJustFields(book,outFields));
+        let resourceHandler = new HateoasResourceHandler({
+            contentType: 'application/vnd.davelopware.examples.book+json',
+            resourceTypeName: 'book',
+            outFields: outFields,
+            inFields: inFields,
+            buildLinks: (model) => {
+                const book = model as IBookModel;
+                if (book.authorId) {
+                    return [{name:'author', uri:`author/${book.authorId}`}]
+                }
+                return [];
+            },
+        });
+        return res.contentType(resourceHandler.contentType).send(resourceHandler.outputModel(book));
+    }
 });
 
 router.post('/api/books', async (req, res) => {

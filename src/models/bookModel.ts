@@ -1,10 +1,12 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema } from 'mongoose';
+import { IModel } from './IModel';
 
 
-export interface IBookModel extends Document {
+export interface IBookModel extends IModel {
     isbn: string;
     title: string;
     desc: string;
+    authorId: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -23,6 +25,10 @@ const BookSchema:Schema = new Schema(
         desc: {
             type: String,
             required: true,
+        },
+        authorId: {
+            type: String,
+            required: false,
         }
     },
     {

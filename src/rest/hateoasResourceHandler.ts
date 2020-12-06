@@ -1,3 +1,4 @@
+import { IBookModel } from "../models/bookModel";
 import { IModel } from "../models/IModel";
 
 export interface HateoasLink {
@@ -7,7 +8,9 @@ export interface HateoasLink {
 
 export interface HateoasResourceParams {
     contentType: string;
+    contentTypeCollection?: string;
     resourceTypeName: string;
+    resourceTypeCollectionName?: string;
     outFields: string[];
     inFields: string[] | null;
     buildLinks?: (model: IModel) => HateoasLink[];
@@ -15,7 +18,9 @@ export interface HateoasResourceParams {
 
 export class HateoasResourceHandler {
     protected _contentType: string;
+    protected _contentTypeCollection?: string;
     protected _resourceTypeName: string;
+    protected _resourceTypeCollectionName?: string;
     protected _inFields: string[];
     protected _outFields: string[];
     protected _model: IModel | null = null;
@@ -23,7 +28,9 @@ export class HateoasResourceHandler {
 
     constructor( params: HateoasResourceParams) {
         this._contentType = params.contentType;
+        this._contentTypeCollection = params.contentTypeCollection;
         this._resourceTypeName = params.resourceTypeName;
+        this._resourceTypeCollectionName = params.resourceTypeCollectionName;
         this._outFields = params.outFields;
         this._inFields = params.inFields ?? [...this._outFields];
         this._buildLinksFn = params.buildLinks;
@@ -31,6 +38,7 @@ export class HateoasResourceHandler {
 
     // set contentType(val: string) { this._contentType = val; } 
     get contentType() { return this._contentType; }
+    get contentTypeCollection(): string { return this._contentTypeCollection ?? 'application/hal+json'; }
     // set resourceType(val: string) { this._resourceTypeName = val; } 
     // get resourceType() { return this._resourceTypeName; }
     set model(val: IModel | null) { this._model = val; }
@@ -40,17 +48,35 @@ export class HateoasResourceHandler {
     // set outFields(val: string[]) { this._outFields = val; }
     // get outFields() { return this._outFields; }
 
-    public outputModel(model: IModel) {
-        let result:any = {};
-        const typeName = this._resourceTypeName;
+    public outputModel(model: IModel, wrap?: boolean) {
         let innerResult = this.getJustFields(model,this._outFields);
         const links = this.buildLinks(model);
         if (links.length > 0) {
             let linksObj = links.reduce<any>((result, link) => ({...result, [link.name] : link.uri}), {});
             console.log(linksObj);
-            innerResult.links = linksObj;
+            innerResult._links = linksObj;
         }
-        result[typeName] = innerResult;
+        return (wrap !== false) ? this.wrapDataIn(innerResult, this._resourceTypeName) : innerResult;
+    }
+
+    protected wrapDataIn(data:any, outer: string) {
+        let result:any = {};
+        result[outer] = data;
+        return result;
+    }
+
+    public outputModelCollection(models: IModel[]) {
+        let result:any = {};
+        result._embedded = this.wrapDataIn(
+            models.map((model) => this.outputModel(model, false)),
+            this._resourceTypeCollectionName ?? this._resourceTypeName+'s'
+        );
+        const links = this.buildCollectionLinks(models);
+        if (links.length > 0) {
+            let linksObj = links.reduce<any>((result, link) => ({...result, [link.name] : link.uri}), {});
+            console.log(linksObj);
+            result._links = linksObj;
+        }
         return result;
     }
 
@@ -64,6 +90,10 @@ export class HateoasResourceHandler {
         } else {
             return [];
         }
+    }
+
+    protected buildCollectionLinks(models: IModel[]) : HateoasLink[] {
+        return [];
     }
 
 }

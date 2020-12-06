@@ -1,20 +1,23 @@
 import dotenv from 'dotenv';
-import express from 'express';
+import Express from 'express';
 import mongoose from 'mongoose';
 import { json } from 'body-parser';
-import { bookRouter } from './routes/bookRoutes';
+// import { bookRouter } from './routes/bookRoutes';
+import { RouteManager } from './routes/routeManager';
 
 /**
  * Express server application class.
  * @description Will later contain the routing system.
  */
 class App {
-    public exp = express();
+    public exp = Express();
+    public routeManager;
 
     constructor() {
         dotenv.config({path: '.env'});
         this.exp.use(json());
-        this.exp.use(bookRouter);
+        this.routeManager = new RouteManager(this.exp);
+        // this.exp.use(bookRouter);
     }
 
     public serverListen() {

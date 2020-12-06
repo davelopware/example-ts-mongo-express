@@ -12,11 +12,13 @@
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "mongodb": "^3.6.3",
-    "mongoose": "^5.10.17"
+    "mongoose": "^5.10.17",
+    "named-routes": "^2.0.7"
   },
   "devDependencies": {
     "@types/express": "^4.17.9",
     "@types/mongoose": "^5.10.1",
+    "@types/named-routes": "^2.0.1",
     "@types/node": "^14.14.10",
     "nodemon": "^2.0.6",
     "ts-node": "^9.0.0",

@@ -1,7 +1,7 @@
 import express from 'express';
 import BookModel, { IBookModel } from '../models/bookModel';
 import { getJustFields } from './routeHelpers';
-import { HateoasResourceHandler, HateoasLink } from '../rest/hateoasResourceHandler';
+import { HateoasResourceHandler } from '../rest/hateoasResourceHandler';
 
 const router = express.Router();
 

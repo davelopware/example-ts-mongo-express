@@ -25,7 +25,6 @@ export class HateoasBookHandler extends HateoasResourceHandler {
     }
 
     protected buildLinks(model: IModel) : HateoasLink[] {
-console.log('book buildLinks'); 
         const book = model as IBookModel;
         if (book.authorId) {
             return [{name:'author', uri:`author/${book.authorId}`}]

@@ -13,8 +13,9 @@ export class RouteManager {
         this.nameRouter = new NamedRouter();
         this.nameRouter.extendExpress(express);
         this.nameRouter.registerAppHelpers(express);
-        
+
         this.books = new RoutesBook(this.router);
+        this.books.initialiseRoutes();
 
         express.use(this.router);
     }

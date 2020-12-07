@@ -53,7 +53,6 @@ router.get('/api/books/:isbn', async (req, res) => {
 
 router.post('/api/books', async (req, res) => {
     const book = new BookModel(getJustFields(req.body,inFields));
-
     await book.save();
     return res.status(201).send(getJustFields(book, outFields));
 });

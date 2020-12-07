@@ -1,4 +1,3 @@
-import { IBookModel } from "../models/bookModel";
 import { IModel } from "../models/IModel";
 
 export interface HateoasLink {
@@ -78,6 +77,21 @@ export class HateoasResourceHandler {
             result._links = linksObj;
         }
         return result;
+    }
+
+    public parseInputResource(input:any) {
+        const innerResource = input[this._resourceTypeName];
+        if (innerResource !== undefined) {
+            return this.getInFieldsOf(innerResource);
+        }
+    }
+
+    public getInFieldsOf(obj:any) {
+        return this.getJustFields(obj, this._inFields);
+    }
+
+    public getOutFieldsOf(obj:any) {
+        return this.getJustFields(obj, this._outFields);
     }
 
     protected getJustFields(obj:any, keys:string[]) {

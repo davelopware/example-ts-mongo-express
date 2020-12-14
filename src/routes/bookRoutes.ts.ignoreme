@@ -1,6 +1,6 @@
 import express from 'express';
 import BookModel, { IBookModel } from '../models/bookModel';
-import { getJustFields } from './routeHelpers';
+import { getJustFields } from './routeHelpers.ts.ignoreme';
 import { HateoasResourceHandler } from '../rest/hateoasResourceHandler';
 
 const router = express.Router();

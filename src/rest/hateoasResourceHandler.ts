@@ -5,57 +5,63 @@ export interface HateoasLink {
     uri: string
 }
 
-export interface HateoasResourceParams {
+export interface HateoasResourceParams<TModel extends IModel> {
     contentType: string;
     contentTypeCollection?: string;
     resourceTypeName: string;
     resourceTypeCollectionName?: string;
     outFields: string[];
     inFields: string[] | null;
-    buildLinks?: (model: IModel) => HateoasLink[];
+    buildLinksFn?: (model: TModel) => HateoasLink[];
 }
 
-export class HateoasResourceHandler {
-    protected _contentType: string;
-    protected _contentTypeCollection?: string;
-    protected _resourceTypeName: string;
-    protected _resourceTypeCollectionName?: string;
-    protected _inFields: string[];
-    protected _outFields: string[];
-    protected _model: IModel | null = null;
-    protected _buildLinksFn?: (model: IModel) => HateoasLink[];
+/**
+ * Handles HATEOAS style object shapes for easy HATEOAS controller implementation
+ */
+export class HateoasResourceHandler<TModel extends IModel> {
+    protected _params: HateoasResourceParams<TModel>;
+    // protected _contentType: string;
+    // protected _contentTypeCollection?: string;
+    // protected _resourceTypeName: string;
+    // protected _resourceTypeCollectionName?: string;
+    // protected _inFields: string[];
+    // protected _outFields: string[];
+    protected _model: TModel | null = null;
+    // protected _buildLinksFn?: HateoasBuildLinksFn<TModel>;
 
-    constructor( params: HateoasResourceParams) {
-        this._contentType = params.contentType;
-        this._contentTypeCollection = params.contentTypeCollection;
-        this._resourceTypeName = params.resourceTypeName;
-        this._resourceTypeCollectionName = params.resourceTypeCollectionName;
-        this._outFields = params.outFields;
-        this._inFields = params.inFields ?? [...this._outFields];
-        this._buildLinksFn = params.buildLinks;
+    constructor( params: HateoasResourceParams<TModel>) {
+        this._params = params;
+        this._params.inFields = this._params.inFields ?? [...this._params.outFields];
+        // this._contentType = params.contentType;
+        // this._contentTypeCollection = params.contentTypeCollection;
+        // this._resourceTypeName = params.resourceTypeName;
+        // this._resourceTypeCollectionName = params.resourceTypeCollectionName;
+        // this._outFields = params.outFields;
+        // this._inFields = params.inFields ?? [...this._outFields];
+        // this._buildLinksFn = params.buildLinks;
     }
 
     // set contentType(val: string) { this._contentType = val; } 
-    get contentType() { return this._contentType; }
-    get contentTypeCollection(): string { return this._contentTypeCollection ?? 'application/hal+json'; }
+    get contentType() { return this._params.contentType; }
+    get contentTypeCollection(): string { return this._params.contentTypeCollection ?? 'application/hal+json'; }
     // set resourceType(val: string) { this._resourceTypeName = val; } 
     // get resourceType() { return this._resourceTypeName; }
-    set model(val: IModel | null) { this._model = val; }
+    set model(val: TModel | null) { this._model = val; }
     get model(){ return this._model; }
     // set inFields(val: string[]) { this._inFields = val; }
     // get inFields() { return this._inFields; }
     // set outFields(val: string[]) { this._outFields = val; }
     // get outFields() { return this._outFields; }
 
-    public outputModel(model: IModel, wrap?: boolean) {
-        let innerResult = this.getJustFields(model,this._outFields);
+    public outputModel(model: TModel, wrap?: boolean) {
+        let innerResult = this.getJustFields(model,this._params.outFields);
         const links = this.buildLinks(model);
         if (links.length > 0) {
             let linksObj = links.reduce<any>((result, link) => ({...result, [link.name] : link.uri}), {});
             console.log(linksObj);
             innerResult._links = linksObj;
         }
-        return (wrap !== false) ? this.wrapDataIn(innerResult, this._resourceTypeName) : innerResult;
+        return (wrap !== false) ? this.wrapDataIn(innerResult, this._params.resourceTypeName) : innerResult;
     }
 
     protected wrapDataIn(data:any, outer: string) {
@@ -64,11 +70,11 @@ export class HateoasResourceHandler {
         return result;
     }
 
-    public outputModelCollection(models: IModel[]) {
+    public outputModelCollection(models: TModel[]) {
         let result:any = {};
         result._embedded = this.wrapDataIn(
             models.map((model) => this.outputModel(model, false)),
-            this._resourceTypeCollectionName ?? this._resourceTypeName+'s'
+            this._params.resourceTypeCollectionName ?? this._params.resourceTypeName+'s'
         );
         const links = this.buildCollectionLinks(models);
         if (links.length > 0) {
@@ -80,33 +86,33 @@ export class HateoasResourceHandler {
     }
 
     public parseInputResource(input:any) {
-        const innerResource = input[this._resourceTypeName];
+        const innerResource = input[this._params.resourceTypeName];
         if (innerResource !== undefined) {
             return this.getInFieldsOf(innerResource);
         }
     }
 
     public getInFieldsOf(obj:any) {
-        return this.getJustFields(obj, this._inFields);
+        return this.getJustFields(obj, this._params.inFields??[]);
     }
 
     public getOutFieldsOf(obj:any) {
-        return this.getJustFields(obj, this._outFields);
+        return this.getJustFields(obj, this._params.outFields);
     }
 
     protected getJustFields(obj:any, keys:string[]) {
         return keys.reduce((a:any, c:string) => ({ ...a, [c]: obj[c] }), {});
     }
 
-    protected buildLinks(model: IModel) : HateoasLink[] {
-        if (this._buildLinksFn) {
-            return this._buildLinksFn(model);
+    protected buildLinks(model: TModel) : HateoasLink[] {
+        if (this._params.buildLinksFn) {
+            return this._params.buildLinksFn(model);
         } else {
             return [];
         }
     }
 
-    protected buildCollectionLinks(models: IModel[]) : HateoasLink[] {
+    protected buildCollectionLinks(models: TModel[]) : HateoasLink[] {
         return [];
     }
 

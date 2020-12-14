@@ -1,7 +1,6 @@
 import mongoose, { Schema } from 'mongoose';
 import { IModel } from './IModel';
 
-
 export interface IBookModel extends IModel {
     isbn: string;
     title: string;

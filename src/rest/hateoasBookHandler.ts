@@ -1,8 +1,7 @@
 import { IBookModel } from "../models/bookModel";
-import { IModel } from "../models/IModel";
 import { HateoasLink, HateoasResourceHandler } from "./hateoasResourceHandler";
 
-export class HateoasBookHandler extends HateoasResourceHandler {
+export class HateoasBookHandler extends HateoasResourceHandler<IBookModel> {
     constructor() {
         super({
             contentType: 'application/vnd.davelopware.examples.book+json',
@@ -12,6 +11,7 @@ export class HateoasBookHandler extends HateoasResourceHandler {
                 'isbn',
                 'title',
                 'desc',
+                'authorId',
                 'createdAt',
                 'updatedAt',
             ],
@@ -24,10 +24,9 @@ export class HateoasBookHandler extends HateoasResourceHandler {
         });
     }
 
-    protected buildLinks(model: IModel) : HateoasLink[] {
-        const book = model as IBookModel;
-        if (book.authorId) {
-            return [{name:'author', uri:`author/${book.authorId}`}]
+    protected buildLinks(model: IBookModel) : HateoasLink[] {
+        if (model.authorId) {
+            return [{name:'author', uri:`author/${model.authorId}`}]
         }
         return [];
     }

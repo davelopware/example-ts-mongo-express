@@ -85,15 +85,23 @@ export class HateoasResourceHandler<TModel extends IModel> {
         return result;
     }
 
-    public parseInputResource(input:any) {
+    public parseInputResource(input:any, withUndefined?:boolean) {
         const innerResource = input[this._params.resourceTypeName];
         if (innerResource !== undefined) {
-            return this.getInFieldsOf(innerResource);
+            if (withUndefined == true) {
+                return this.getInFieldsOf(innerResource);
+            } else {
+                return this.getInFieldsOfNotUndefined(innerResource);
+            }
         }
     }
 
     public getInFieldsOf(obj:any) {
         return this.getJustFields(obj, this._params.inFields??[]);
+    }
+
+    public getInFieldsOfNotUndefined(obj:any) {
+        return this.getJustFieldsNotUndefined(obj, this._params.inFields??[]);
     }
 
     public getOutFieldsOf(obj:any) {
@@ -102,6 +110,10 @@ export class HateoasResourceHandler<TModel extends IModel> {
 
     protected getJustFields(obj:any, keys:string[]) {
         return keys.reduce((a:any, c:string) => ({ ...a, [c]: obj[c] }), {});
+    }
+
+    protected getJustFieldsNotUndefined(obj:any, keys:string[]) {
+        return keys.reduce((a:any, c:string) => (obj[c] == undefined ? a : { ...a, [c]: obj[c] }), {});
     }
 
     protected buildLinks(model: TModel) : HateoasLink[] {

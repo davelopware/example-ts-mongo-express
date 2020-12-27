@@ -41,11 +41,15 @@ export class HateoasResourceHandler<TModel extends IModel> {
         // this._buildLinksFn = params.buildLinks;
     }
 
+    public paramSet(param: any) {
+        this._params = {...this._params, ...param};
+    }
+
     // set contentType(val: string) { this._contentType = val; } 
     get contentType() { return this._params.contentType; }
     get contentTypeCollection(): string { return this._params.contentTypeCollection ?? 'application/hal+json'; }
     // set resourceType(val: string) { this._resourceTypeName = val; } 
-    // get resourceType() { return this._resourceTypeName; }
+    get resourceTypeName() { return this._params.resourceTypeName; }
     set model(val: TModel | null) { this._model = val; }
     get model(){ return this._model; }
     // set inFields(val: string[]) { this._inFields = val; }
@@ -57,8 +61,8 @@ export class HateoasResourceHandler<TModel extends IModel> {
         let innerResult = this.getJustFields(model,this._params.outFields);
         const links = this.buildLinks(model);
         if (links.length > 0) {
-            let linksObj = links.reduce<any>((result, link) => ({...result, [link.name] : link.uri}), {});
-            console.log(linksObj);
+            let linksObj = links.reduce<any>((result, link) => ({...result, [link.name] : {href: link.uri}}), {});
+            // console.log(linksObj);
             innerResult._links = linksObj;
         }
         return (wrap !== false) ? this.wrapDataIn(innerResult, this._params.resourceTypeName) : innerResult;

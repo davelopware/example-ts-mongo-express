@@ -1,58 +1,61 @@
-import { Router } from "express";
+import Express, { Router } from 'express';
 import { RoutesBase } from "./routesBase";
 import BookModel, { IBookModel } from "../models/bookModel";
 import { HateoasBookHandler } from '../rest/hateoasBookHandler'
 import { FilterQuery } from "mongodb";
 import { QueryFindOneAndUpdateOptions } from "mongoose";
+import NamedRouter from "named-routes";
 
 export class RoutesBook extends RoutesBase<IBookModel> {
 
-    constructor(router: Router) {
+
+    constructor(router: Router, express: Express.Express, namedRouter: NamedRouter) {
         super({
+            express: express,
             router: router,
+            namedRouter: namedRouter,
             hateoas: new HateoasBookHandler(),
             routeBase: "/api/books",
             idDbFieldName: "isbn",
         });
+        this.hateoas.paramSet({buildLinksFn: this.buildLinks.bind(this)});
+    }
+
+    public routeUriGetOneByISBN(isbn: string) {
+        this.namedRouter.build(this.routeNameGetOne, this.idAsFindableCondition(isbn));
+    }
+
+    public routeUriPutUpdateByISBN(isbn: string) {
+        return this.namedRouter.build(this.routeNamePut, this.idAsFindableCondition(isbn));
+    }
+
+    public routeUriPatchUpdateByISBN(isbn: string) {
+        return this.namedRouter.build(this.routeNamePatch, this.idAsFindableCondition(isbn));
     }
 
     public initialiseRoutes() {
-        this.router.get('/api/books', async (req, res) => {
+        this.express.get('/api/books', this.routeNameGetMany, async (req, res) => {
             // TODO pagination handling
             const books = await this.find({});
             return this.sendResponseForModelCollection(res, books);
         });
         
-        this.router.get('/api/books/:isbn', async (req, res) => {
+        this.express.get('/api/books/:isbn', this.routeNameGetOne, async (req, res) => {
             return this.getOneHelper(req.params, res);
         });
 
-        this.router.post('/api/books', async (req, res) => {
+        this.express.post('/api/books', this.routeNamePost, async (req, res) => {
             return this.postHelper(req.body, res);
         });
  
-        this.router.put('/api/books/:isbn', async (req, res) => {
+        this.express.put('/api/books/:isbn', this.routeNamePut, async (req, res) => {
             const isbn:string = req.params.isbn;
-            return this.putHelper<string>(
-                req.body,
-                res,
-                isbn,
-                "isbn"
-            );
+            return this.putHelper<string>(req.body, res, isbn, "isbn");
         });
  
-        this.router.patch('/api/books/:isbn', async (req, res) => {
-            try {
-                const isbn:string = req.params.isbn;
-                return this.patchHelper<string>(
-                    req.body,
-                    res,
-                    isbn,
-                    "isbn"
-                );
-            } catch (err) {
-                return res.status(500).json({error:err});
-            }
+        this.express.patch('/api/books/:isbn', this.routeNamePatch, async (req, res) => {
+            const isbn:string = req.params.isbn;
+            return this.patchHelper<string>(req.body, res, isbn, "isbn");
         });
     }
 
@@ -70,5 +73,9 @@ export class RoutesBook extends RoutesBase<IBookModel> {
 
     protected async findOneAndUpdate(conditions: FilterQuery<IBookModel>, updateQuery: any, options?: QueryFindOneAndUpdateOptions) {
         return BookModel.findOneAndUpdate(conditions, updateQuery, options);
+    }
+
+    protected idAsFindableConditionFromModel(model: IBookModel) {
+        return this.idAsFindableCondition(model.isbn);
     }
 }

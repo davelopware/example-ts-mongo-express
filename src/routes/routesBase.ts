@@ -1,12 +1,15 @@
-import { Router } from "express";
+import Express, { Router } from "express";
 import { Response, ParamsDictionary } from "express-serve-static-core";
 import { QueryFindOneAndUpdateOptions } from "mongoose";
 import { FilterQuery } from "mongodb";
 import { IModel } from "../models/IModel";
-import { HateoasResourceHandler } from "../rest/hateoasResourceHandler";
+import { HateoasLink, HateoasResourceHandler } from "../rest/hateoasResourceHandler";
+import NamedRouter from "named-routes";
 
 export interface RoutesParams<TModel extends IModel> {
+    express: Express.Express;
     router: Router;
+    namedRouter: NamedRouter;
     hateoas: HateoasResourceHandler<TModel>;
     routeBase: string;
     idDbFieldName: string;
@@ -15,18 +18,58 @@ export interface RoutesParams<TModel extends IModel> {
 export class RoutesBase<TModel extends IModel> {
 
     protected hateoas: HateoasResourceHandler<TModel>;
+    protected express: Express.Express;
     protected router: Router;
+    protected namedRouter: NamedRouter;
     protected routeBase: string;
     protected idDbFieldName: string;
 
     constructor(params: RoutesParams<TModel>) {
+        this.express = params.express;
         this.router = params.router;
+        this.namedRouter = params.namedRouter
         this.routeBase = params.routeBase;
         this.hateoas = params.hateoas;
         this.idDbFieldName = params.idDbFieldName;
     }
 
     public initialiseRoutes() {
+    }
+
+    public get routeNameGetOne() {
+        return `${this.hateoas.resourceTypeName}.get.one`;
+    }
+
+    public routeUriGetOneByModel(model: TModel) {
+        return this.namedRouter.build(this.routeNameGetOne, this.idAsFindableConditionFromModel(model));
+    }
+
+    public get routeNameGetMany() {
+        return `${this.hateoas.resourceTypeName}.get.many`;
+    }
+
+    public get routeNamePost() {
+        return `${this.hateoas.resourceTypeName}.post`;
+    }
+
+    public get routeUriPostNew() {
+        return this.namedRouter.build(this.routeNamePost);
+    }
+
+    public get routeNamePut() {
+        return `${this.hateoas.resourceTypeName}.put`;
+    }
+
+    public routeUriPutUpdateByModel(model: TModel) {
+        return this.namedRouter.build(this.routeNamePut, this.idAsFindableConditionFromModel(model));
+    }
+
+    public get routeNamePatch() {
+        return `${this.hateoas.resourceTypeName}.patch`;
+    }
+
+    public routeUriPatchUpdateByModel(model: TModel) {
+        return this.namedRouter.build(this.routeNamePatch, this.idAsFindableConditionFromModel(model));
     }
 
     protected newModel(doc?: any) : TModel {
@@ -85,20 +128,24 @@ export class RoutesBase<TModel extends IModel> {
         urlParamValue:IDType,
         fieldName:string
     ) {
-        const requestParsed = this.hateoas.parseInputResource(reqBody);
-        if (requestParsed[fieldName] != urlParamValue) {
-            return this.sendErrorResponse(res, `The uri parameter and body value for [${fieldName}] do not match`);
-        }
+        try {
+            const requestParsed = this.hateoas.parseInputResource(reqBody);
+            if (requestParsed[fieldName] != urlParamValue) {
+                return this.sendErrorResponse(res, `The uri parameter and body value for [${fieldName}] do not match`);
+            }
 
-        const findCondition = this.idAsFindableCondition(urlParamValue);
-        const modelBefore = await this.findOne(findCondition);
-        if (modelBefore) {
-            const modelAfter = await this.findOneAndUpdate(findCondition, requestParsed, {new:true, overwrite:true});
-            return this.sendResponseForModel(res, modelAfter, 200);
-        } else {
-            const newModel = this.newModel(this.hateoas.parseInputResource(reqBody));
-            await newModel.save();
-            return this.sendResponseForModel(res, newModel, 201);
+            const findCondition = this.idAsFindableCondition(urlParamValue);
+            const modelBefore = await this.findOne(findCondition);
+            if (modelBefore) {
+                const modelAfter = await this.findOneAndUpdate(findCondition, requestParsed, {new:true, overwrite:true});
+                return this.sendResponseForModel(res, modelAfter, 200);
+            } else {
+                const newModel = this.newModel(this.hateoas.parseInputResource(reqBody));
+                await newModel.save();
+                return this.sendResponseForModel(res, newModel, 201);
+            }
+        } catch (err) {
+            return this.sendErrorResponse(res, err, 500);
         }
     }
 
@@ -108,18 +155,22 @@ export class RoutesBase<TModel extends IModel> {
         urlParamValue:IDType,
         fieldName:string
     ) {
-        const requestParsed = this.hateoas.parseInputResource(reqBody, false);
-        if (requestParsed[fieldName] && requestParsed[fieldName] != urlParamValue) {
-            return this.sendErrorResponse(res, `The uri parameter and body value for [${fieldName}] do not match`);
-        }
+        try {
+            const requestParsed = this.hateoas.parseInputResource(reqBody, false);
+            if (requestParsed[fieldName] && requestParsed[fieldName] != urlParamValue) {
+                return this.sendErrorResponse(res, `The uri parameter and body value for [${fieldName}] do not match`);
+            }
 
-        const findCondition = this.idAsFindableCondition(urlParamValue);
-        const modelBefore = await this.findOne(findCondition);
-        if (modelBefore) {
-            const modelAfter = await this.findOneAndUpdate(findCondition, {$set: requestParsed}, {new:true});
-            return this.sendResponseForModel(res, modelAfter, 200);
-        } else {
-            return this.sendResponseForModel(res, null);
+            const findCondition = this.idAsFindableCondition(urlParamValue);
+            const modelBefore = await this.findOne(findCondition);
+            if (modelBefore) {
+                const modelAfter = await this.findOneAndUpdate(findCondition, {$set: requestParsed}, {new:true});
+                return this.sendResponseForModel(res, modelAfter, 200);
+            } else {
+                return this.sendResponseForModel(res, null);
+            }
+        } catch (err) {
+            return this.sendErrorResponse(res, err, 500);
         }
     }
 
@@ -144,10 +195,28 @@ export class RoutesBase<TModel extends IModel> {
             .json({error:errorMsg});
     }
 
-    private idAsFindableCondition(value: any) {
+    protected buildLinks(model: TModel) : HateoasLink[] {
+        let links: HateoasLink[] = [];
+
+        links.push({name:"self", uri: this.routeUriGetOneByModel(model)});
+
+        return links;
+    }
+
+    protected buildCollectionLinks(models: TModel[]) : HateoasLink[] {
+        return [];
+    }
+
+    protected idAsFindableConditionFromModel(model: TModel) {
+        let tmpModel: any = model;
+        return this.idAsFindableCondition(tmpModel[this.idDbFieldName]);
+        // throw new Error("Not Implemented");
+    }
+
+    protected idAsFindableCondition(value: any) {
         let id:any = {};
         id[this.idDbFieldName] = value;
         return id;
     }
-
+    
 }

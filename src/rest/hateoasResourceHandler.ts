@@ -5,6 +5,8 @@ export interface HateoasLink {
     uri: string
 }
 
+export type HateoasBuildLinks<TModel extends IModel> = (model: TModel) => HateoasLink[];
+
 export interface HateoasResourceParams<TModel extends IModel> {
     contentType: string;
     contentTypeCollection?: string;
@@ -12,7 +14,7 @@ export interface HateoasResourceParams<TModel extends IModel> {
     resourceTypeCollectionName?: string;
     outFields: string[];
     inFields: string[] | null;
-    buildLinksFn?: (model: TModel) => HateoasLink[];
+    buildLinksFn?: HateoasBuildLinks<TModel>;
 }
 
 /**
@@ -20,49 +22,33 @@ export interface HateoasResourceParams<TModel extends IModel> {
  */
 export class HateoasResourceHandler<TModel extends IModel> {
     protected _params: HateoasResourceParams<TModel>;
-    // protected _contentType: string;
-    // protected _contentTypeCollection?: string;
-    // protected _resourceTypeName: string;
-    // protected _resourceTypeCollectionName?: string;
-    // protected _inFields: string[];
-    // protected _outFields: string[];
     protected _model: TModel | null = null;
-    // protected _buildLinksFn?: HateoasBuildLinksFn<TModel>;
+    protected _buildLinksFns: HateoasBuildLinks<TModel>[];
 
     constructor( params: HateoasResourceParams<TModel>) {
         this._params = params;
         this._params.inFields = this._params.inFields ?? [...this._params.outFields];
-        // this._contentType = params.contentType;
-        // this._contentTypeCollection = params.contentTypeCollection;
-        // this._resourceTypeName = params.resourceTypeName;
-        // this._resourceTypeCollectionName = params.resourceTypeCollectionName;
-        // this._outFields = params.outFields;
-        // this._inFields = params.inFields ?? [...this._outFields];
-        // this._buildLinksFn = params.buildLinks;
+        this._buildLinksFns = [];
+        if (this._params.buildLinksFn) {
+            this.addBuildLinksFn(this._params.buildLinksFn);
+        }
     }
 
-    public paramSet(param: any) {
-        this._params = {...this._params, ...param};
+    public addBuildLinksFn(buildLinksFn: HateoasBuildLinks<TModel>) {
+        this._buildLinksFns.push(buildLinksFn);
     }
 
-    // set contentType(val: string) { this._contentType = val; } 
     get contentType() { return this._params.contentType; }
     get contentTypeCollection(): string { return this._params.contentTypeCollection ?? 'application/hal+json'; }
-    // set resourceType(val: string) { this._resourceTypeName = val; } 
     get resourceTypeName() { return this._params.resourceTypeName; }
     set model(val: TModel | null) { this._model = val; }
     get model(){ return this._model; }
-    // set inFields(val: string[]) { this._inFields = val; }
-    // get inFields() { return this._inFields; }
-    // set outFields(val: string[]) { this._outFields = val; }
-    // get outFields() { return this._outFields; }
 
     public outputModel(model: TModel, wrap?: boolean) {
         let innerResult = this.getJustFields(model,this._params.outFields);
         const links = this.buildLinks(model);
         if (links.length > 0) {
             let linksObj = links.reduce<any>((result, link) => ({...result, [link.name] : {href: link.uri}}), {});
-            // console.log(linksObj);
             innerResult._links = linksObj;
         }
         return (wrap !== false) ? this.wrapDataIn(innerResult, this._params.resourceTypeName) : innerResult;
@@ -83,7 +69,6 @@ export class HateoasResourceHandler<TModel extends IModel> {
         const links = this.buildCollectionLinks(models);
         if (links.length > 0) {
             let linksObj = links.reduce<any>((result, link) => ({...result, [link.name] : link.uri}), {});
-            console.log(linksObj);
             result._links = linksObj;
         }
         return result;
@@ -121,14 +106,15 @@ export class HateoasResourceHandler<TModel extends IModel> {
     }
 
     protected buildLinks(model: TModel) : HateoasLink[] {
-        if (this._params.buildLinksFn) {
-            return this._params.buildLinksFn(model);
-        } else {
-            return [];
-        }
+        let links: HateoasLink[] = [];
+        this._buildLinksFns.forEach(buildLinksFn => {
+            links = links.concat(buildLinksFn(model));
+        });
+        return links;
     }
 
     protected buildCollectionLinks(models: TModel[]) : HateoasLink[] {
+        // TODO pagination handling
         return [];
     }
 

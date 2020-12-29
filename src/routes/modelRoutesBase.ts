@@ -6,7 +6,11 @@ import { IModel } from "../models/IModel";
 import { HateoasLink, HateoasResourceHandler } from "../rest/hateoasResourceHandler";
 import NamedRouter from "named-routes";
 
-export interface RoutesParams<TModel extends IModel> {
+export interface IModelRoutesBase {
+    initialiseRoutes() : void;
+} 
+
+export interface ModelRoutesParams<TModel extends IModel> {
     express: Express.Express;
     router: Router;
     namedRouter: NamedRouter;
@@ -15,7 +19,7 @@ export interface RoutesParams<TModel extends IModel> {
     idDbFieldName: string;
 }
 
-export class RoutesBase<TModel extends IModel> {
+export class ModelRoutesBase<TModel extends IModel> implements IModelRoutesBase {
 
     protected hateoas: HateoasResourceHandler<TModel>;
     protected express: Express.Express;
@@ -24,18 +28,26 @@ export class RoutesBase<TModel extends IModel> {
     protected routeBase: string;
     protected idDbFieldName: string;
 
-    constructor(params: RoutesParams<TModel>) {
+    constructor(params: ModelRoutesParams<TModel>) {
         this.express = params.express;
         this.router = params.router;
         this.namedRouter = params.namedRouter
         this.routeBase = params.routeBase;
         this.hateoas = params.hateoas;
         this.idDbFieldName = params.idDbFieldName;
+        
+        this.hateoas.addBuildLinksFn(this.buildLinks.bind(this));
     }
 
+    /**
+     * Override in derived classes to add all routes for all appropriate verbs for this model
+     */
     public initialiseRoutes() {
     }
 
+    /**
+     * 
+     */
     public get routeNameGetOne() {
         return `${this.hateoas.resourceTypeName}.get.one`;
     }
@@ -197,9 +209,7 @@ export class RoutesBase<TModel extends IModel> {
 
     protected buildLinks(model: TModel) : HateoasLink[] {
         let links: HateoasLink[] = [];
-
         links.push({name:"self", uri: this.routeUriGetOneByModel(model)});
-
         return links;
     }
 
@@ -210,7 +220,6 @@ export class RoutesBase<TModel extends IModel> {
     protected idAsFindableConditionFromModel(model: TModel) {
         let tmpModel: any = model;
         return this.idAsFindableCondition(tmpModel[this.idDbFieldName]);
-        // throw new Error("Not Implemented");
     }
 
     protected idAsFindableCondition(value: any) {

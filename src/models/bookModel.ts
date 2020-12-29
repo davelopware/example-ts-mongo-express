@@ -1,6 +1,9 @@
 import mongoose, { Schema } from 'mongoose';
 import { IModel } from './IModel';
 
+/**
+ * Interface for the model - field names and types
+ */
 export interface IBookModel extends IModel {
     isbn: string;
     title: string;
@@ -10,6 +13,9 @@ export interface IBookModel extends IModel {
     updatedAt: Date;
 }
 
+/**
+ * Schema for the MongoDB collection
+ */
 const BookSchema:Schema = new Schema(
     {
         isbn: {
@@ -35,6 +41,8 @@ const BookSchema:Schema = new Schema(
     }
 );
 
+/**
+ * The actual Model type used for making model instances to interact with the database
+ */
 const BookModel = mongoose.model<IBookModel>('book', BookSchema);
-
 export default BookModel;

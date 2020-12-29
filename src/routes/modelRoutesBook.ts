@@ -1,13 +1,12 @@
 import Express, { Router } from 'express';
-import { RoutesBase } from "./routesBase";
+import { ModelRoutesBase } from "./modelRoutesBase";
 import BookModel, { IBookModel } from "../models/bookModel";
 import { HateoasBookHandler } from '../rest/hateoasBookHandler'
 import { FilterQuery } from "mongodb";
 import { QueryFindOneAndUpdateOptions } from "mongoose";
 import NamedRouter from "named-routes";
 
-export class RoutesBook extends RoutesBase<IBookModel> {
-
+export class ModelRoutesBook extends ModelRoutesBase<IBookModel> {
 
     constructor(router: Router, express: Express.Express, namedRouter: NamedRouter) {
         super({
@@ -18,19 +17,6 @@ export class RoutesBook extends RoutesBase<IBookModel> {
             routeBase: "/api/books",
             idDbFieldName: "isbn",
         });
-        this.hateoas.paramSet({buildLinksFn: this.buildLinks.bind(this)});
-    }
-
-    public routeUriGetOneByISBN(isbn: string) {
-        this.namedRouter.build(this.routeNameGetOne, this.idAsFindableCondition(isbn));
-    }
-
-    public routeUriPutUpdateByISBN(isbn: string) {
-        return this.namedRouter.build(this.routeNamePut, this.idAsFindableCondition(isbn));
-    }
-
-    public routeUriPatchUpdateByISBN(isbn: string) {
-        return this.namedRouter.build(this.routeNamePatch, this.idAsFindableCondition(isbn));
     }
 
     public initialiseRoutes() {
@@ -57,6 +43,18 @@ export class RoutesBook extends RoutesBase<IBookModel> {
             const isbn:string = req.params.isbn;
             return this.patchHelper<string>(req.body, res, isbn, "isbn");
         });
+    }
+
+    public routeUriGetOneByISBN(isbn: string) {
+        this.namedRouter.build(this.routeNameGetOne, this.idAsFindableCondition(isbn));
+    }
+
+    public routeUriPutUpdateByISBN(isbn: string) {
+        return this.namedRouter.build(this.routeNamePut, this.idAsFindableCondition(isbn));
+    }
+
+    public routeUriPatchUpdateByISBN(isbn: string) {
+        return this.namedRouter.build(this.routeNamePatch, this.idAsFindableCondition(isbn));
     }
 
     protected newModel(doc?: any) {

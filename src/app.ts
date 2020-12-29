@@ -2,7 +2,8 @@ import dotenv from 'dotenv';
 import Express from 'express';
 import mongoose from 'mongoose';
 import { json } from 'body-parser';
-import { RouteManager } from './routes/routeManager';
+import { ModelRoutesManager } from './routes/modelRoutesManager';
+import { ModelRoutesBook } from './routes/modelRoutesBook';
 
 /**
  * Express server application class.
@@ -10,7 +11,7 @@ import { RouteManager } from './routes/routeManager';
  */
 class App {
     public exp = Express();
-    public routeManager;
+    public modelRoutesManager;
 
     constructor() {
         console.log(`================================================================================`);
@@ -19,7 +20,10 @@ class App {
         console.log(`loading configuration from environment file...`);
         dotenv.config({path: '.env'});
         this.exp.use(json());
-        this.routeManager = new RouteManager(this.exp);
+        this.modelRoutesManager = new ModelRoutesManager(this.exp);
+        this.modelRoutesManager.addModelRouteByFunction(
+            (router, express, namedRouter) => new ModelRoutesBook(router, express, namedRouter)
+        );
     }
 
     public mongooseConnect() {

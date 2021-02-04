@@ -40,7 +40,7 @@ export class HateoasBookHandler extends HateoasResourceHandler<IBookModel> {
      * Build a list of links associated with the specified model
      */
     protected buildLinks(model: IBookModel) : HateoasLink[] {
-        let links = super.buildLinks(model);
+        const links = super.buildLinks(model);
         if (model.authorId) {
             links.push({name:'author', uri:`author/${model.authorId}`});
         }

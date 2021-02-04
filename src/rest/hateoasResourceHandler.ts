@@ -1,5 +1,9 @@
 import { IModel } from "../models/IModel";
 
+export type ReadonlyPartial<TSchema> = {
+    readonly [key in keyof TSchema]?: TSchema[key];
+};
+
 export interface HateoasLink {
     name: string;
     uri: string
@@ -45,30 +49,30 @@ export class HateoasResourceHandler<TModel extends IModel> {
     get model(){ return this._model; }
 
     public outputModel(model: TModel, wrap?: boolean) {
-        let innerResult = this.getJustFields(model,this._params.outFields);
+        const innerResult = this.getJustFields(model,this._params.outFields);
         const links = this.buildLinks(model);
         if (links.length > 0) {
-            let linksObj = links.reduce<any>((result, link) => ({...result, [link.name] : {href: link.uri}}), {});
+            const linksObj = links.reduce<any>((result, link) => ({...result, [link.name] : {href: link.uri}}), {});
             innerResult._links = linksObj;
         }
         return (wrap !== false) ? this.wrapDataIn(innerResult, this._params.resourceTypeName) : innerResult;
     }
 
     protected wrapDataIn(data:any, outer: string) {
-        let result:any = {};
+        const result:any = {};
         result[outer] = data;
         return result;
     }
 
     public outputModelCollection(models: TModel[]) {
-        let result:any = {};
+        const result:any = {};
         result._embedded = this.wrapDataIn(
             models.map((model) => this.outputModel(model, false)),
             this._params.resourceTypeCollectionName ?? this._params.resourceTypeName+'s'
         );
         const links = this.buildCollectionLinks(models);
         if (links.length > 0) {
-            let linksObj = links.reduce<any>((result, link) => ({...result, [link.name] : link.uri}), {});
+            const linksObj = links.reduce<any>((rslt, link) => ({...rslt, [link.name] : link.uri}), {});
             result._links = linksObj;
         }
         return result;
@@ -77,11 +81,13 @@ export class HateoasResourceHandler<TModel extends IModel> {
     public parseInputResource(input:any, withUndefined?:boolean) {
         const innerResource = input[this._params.resourceTypeName];
         if (innerResource !== undefined) {
-            if (withUndefined == true) {
+            if (withUndefined === true) {
                 return this.getInFieldsOf(innerResource);
             } else {
                 return this.getInFieldsOfNotUndefined(innerResource);
             }
+        } else {
+            return {};
         }
     }
 
@@ -97,12 +103,19 @@ export class HateoasResourceHandler<TModel extends IModel> {
         return this.getJustFields(obj, this._params.outFields);
     }
 
+    // type modelKeys = keyof TModel;
+    // modelKeys.foreach()
+
+    // type ReadonlyPartial<TSchema> = {
+    //     readonly [key in keyof TSchema]?: TSchema[key];
+    // };
+
     protected getJustFields(obj:any, keys:string[]) {
         return keys.reduce((a:any, c:string) => ({ ...a, [c]: obj[c] }), {});
     }
 
     protected getJustFieldsNotUndefined(obj:any, keys:string[]) {
-        return keys.reduce((a:any, c:string) => (obj[c] == undefined ? a : { ...a, [c]: obj[c] }), {});
+        return keys.reduce((a:any, c:string) => (obj[c] === undefined ? a : { ...a, [c]: obj[c] }), {});
     }
 
     protected buildLinks(model: TModel) : HateoasLink[] {

@@ -39,7 +39,7 @@ export class ModelRoutesManager {
      * of a class derived from RoutesBase<TModel>) 
      */
     public addModelRouteByFunction(newModelRouteFn: ModelRoutesManagerNewModelRouteFn) {
-        let modelRoutes = newModelRouteFn(this.router, this.express, this.namedRouter);
+        const modelRoutes = newModelRouteFn(this.router, this.express, this.namedRouter);
         modelRoutes.initialiseRoutes();
         this.allModelRoutes.push(modelRoutes);
     }

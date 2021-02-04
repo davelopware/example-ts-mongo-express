@@ -3,16 +3,16 @@ import { ModelRoutesBase } from "./modelRoutesBase";
 import BookModel, { IBookModel } from "../models/bookModel";
 import { HateoasBookHandler } from '../rest/hateoasBookHandler'
 import { FilterQuery } from "mongodb";
-import { QueryFindOneAndUpdateOptions } from "mongoose";
+import { Query,  QueryOptions, UpdateQuery } from "mongoose";
 import NamedRouter from "named-routes";
 
 export class ModelRoutesBook extends ModelRoutesBase<IBookModel> {
 
     constructor(router: Router, express: Express.Express, namedRouter: NamedRouter) {
         super({
-            express: express,
-            router: router,
-            namedRouter: namedRouter,
+            express,
+            router,
+            namedRouter,
             hateoas: new HateoasBookHandler(),
             routeBase: "/api/books",
             idDbFieldName: "isbn",
@@ -61,16 +61,20 @@ export class ModelRoutesBook extends ModelRoutesBase<IBookModel> {
         return new BookModel(doc);
     }
 
-    protected async findOne(conditions: FilterQuery<IBookModel>) {
-        return BookModel.findOne(conditions);
+    protected findOne(filter: FilterQuery<IBookModel>) : Query<IBookModel | null, IBookModel> {
+        return BookModel.findOne(filter);
     }
 
-    protected async find(conditions: FilterQuery<IBookModel>) {
-        return BookModel.find(conditions);
+    protected find(filter: FilterQuery<IBookModel>) : Query<Array<IBookModel>, IBookModel> {
+        return BookModel.find(filter);
     }
 
-    protected async findOneAndUpdate(conditions: FilterQuery<IBookModel>, updateQuery: any, options?: QueryFindOneAndUpdateOptions) {
-        return BookModel.findOneAndUpdate(conditions, updateQuery, options);
+    protected findOneAndUpdate(filter: FilterQuery<IBookModel>, updateQuery: UpdateQuery<IBookModel>, options?: QueryOptions) : Query<IBookModel | null, IBookModel> {
+        if (options) {
+            return BookModel.findOneAndUpdate(filter, updateQuery, options);
+        } else {
+            return BookModel.findOneAndUpdate(filter, updateQuery);
+        }
     }
 
     protected idAsFindableConditionFromModel(model: IBookModel) {

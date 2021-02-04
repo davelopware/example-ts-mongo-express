@@ -1,7 +1,7 @@
 import Express, { Router } from "express";
 import { Response, ParamsDictionary } from "express-serve-static-core";
-import { QueryFindOneAndUpdateOptions } from "mongoose";
-import { FilterQuery } from "mongodb";
+import { FilterQuery, UpdateQuery as MongoDBUpdateQuery } from "mongodb";
+import { Query,  QueryOptions, UpdateQuery } from "mongoose";
 import { IModel } from "../models/IModel";
 import { HateoasLink, HateoasResourceHandler } from "../rest/hateoasResourceHandler";
 import NamedRouter from "named-routes";
@@ -43,6 +43,7 @@ export class ModelRoutesBase<TModel extends IModel> implements IModelRoutesBase 
      * Override in derived classes to add all routes for all appropriate verbs for this model
      */
     public initialiseRoutes() {
+        ;
     }
 
     /**
@@ -88,15 +89,15 @@ export class ModelRoutesBase<TModel extends IModel> implements IModelRoutesBase 
         throw new Error("Not Implemented");
     }
 
-    protected async findOne(conditions: FilterQuery<TModel>) : Promise<TModel | null> {
+    protected findOne(filter: FilterQuery<TModel>) : Query<TModel | null, TModel> {
         throw new Error("Not Implemented");
     }
 
-    protected async find(conditions: FilterQuery<TModel>) : Promise<TModel[]> {
+    protected find(filter: FilterQuery<TModel>) : Query<Array<TModel>, TModel> {
         throw new Error("Not Implemented");
     }
 
-    protected async findOneAndUpdate(conditions: FilterQuery<TModel>, updateQuery: any, options?: QueryFindOneAndUpdateOptions) : Promise<TModel> {
+    protected findOneAndUpdate(filter: FilterQuery<TModel>, updateQuery: UpdateQuery<TModel>, options?: QueryOptions) : Query<TModel | null, TModel> {
         throw new Error("Not Implemented");
     }
 
@@ -106,9 +107,13 @@ export class ModelRoutesBase<TModel extends IModel> implements IModelRoutesBase 
     ) {
         const urlParamValue:string = reqParams[this.idDbFieldName];
         const condition = this.idAsFindableCondition(urlParamValue);
-        const model = await this.findOne(condition);
+        const model = await this.findOne(condition).exec();
         return this.sendResponseForModel(res, model);
     }
+
+    // protected propOf<T, K extends keyof T>(obj: T, key: K) {
+    //     return obj[key];
+    // }
 
     protected async postHelper(
         reqBody: any,
@@ -116,9 +121,9 @@ export class ModelRoutesBase<TModel extends IModel> implements IModelRoutesBase 
     ) {
         try {
             const requestParsed = this.hateoas.parseInputResource(reqBody);
-            const idFieldReqBodyValue:string = requestParsed[this.idDbFieldName];
-            const condition = this.idAsFindableCondition(idFieldReqBodyValue);
-            const modelBefore = await this.findOne(condition);
+            const idFieldReqBodyValue = requestParsed[this.idDbFieldName];
+            const filter = this.idAsFindableCondition(idFieldReqBodyValue);
+            const modelBefore = await this.findOne(filter);
             if (modelBefore) {
                 return this.sendErrorResponse(
                     res,
@@ -142,7 +147,7 @@ export class ModelRoutesBase<TModel extends IModel> implements IModelRoutesBase 
     ) {
         try {
             const requestParsed = this.hateoas.parseInputResource(reqBody);
-            if (requestParsed[fieldName] != urlParamValue) {
+            if (requestParsed[fieldName] !== urlParamValue) {
                 return this.sendErrorResponse(res, `The uri parameter and body value for [${fieldName}] do not match`);
             }
 
@@ -169,12 +174,15 @@ export class ModelRoutesBase<TModel extends IModel> implements IModelRoutesBase 
     ) {
         try {
             const requestParsed = this.hateoas.parseInputResource(reqBody, false);
-            if (requestParsed[fieldName] && requestParsed[fieldName] != urlParamValue) {
+            if (requestParsed[fieldName] && requestParsed[fieldName] !== urlParamValue) {
                 return this.sendErrorResponse(res, `The uri parameter and body value for [${fieldName}] do not match`);
             }
 
             const findCondition = this.idAsFindableCondition(urlParamValue);
             const modelBefore = await this.findOne(findCondition);
+            var updateQuery : UpdateQuery<TModel>;
+            updateQuery = MongoDBUpdateQuery<TModel>();
+            updateQuery.$set = requestParsed;
             if (modelBefore) {
                 const modelAfter = await this.findOneAndUpdate(findCondition, {$set: requestParsed}, {new:true});
                 return this.sendResponseForModel(res, modelAfter, 200);
@@ -208,7 +216,7 @@ export class ModelRoutesBase<TModel extends IModel> implements IModelRoutesBase 
     }
 
     protected buildLinks(model: TModel) : HateoasLink[] {
-        let links: HateoasLink[] = [];
+        const links: HateoasLink[] = [];
         links.push({name:"self", uri: this.routeUriGetOneByModel(model)});
         return links;
     }
@@ -218,12 +226,12 @@ export class ModelRoutesBase<TModel extends IModel> implements IModelRoutesBase 
     }
 
     protected idAsFindableConditionFromModel(model: TModel) {
-        let tmpModel: any = model;
+        const tmpModel: any = model;
         return this.idAsFindableCondition(tmpModel[this.idDbFieldName]);
     }
 
     protected idAsFindableCondition(value: any) {
-        let id:any = {};
+        const id:any = {};
         id[this.idDbFieldName] = value;
         return id;
     }

@@ -180,11 +180,8 @@ export class ModelRoutesBase<TModel extends IModel> implements IModelRoutesBase 
 
             const findCondition = this.idAsFindableCondition(urlParamValue);
             const modelBefore = await this.findOne(findCondition);
-            var updateQuery : UpdateQuery<TModel>;
-            updateQuery = MongoDBUpdateQuery<TModel>();
-            updateQuery.$set = requestParsed;
             if (modelBefore) {
-                const modelAfter = await this.findOneAndUpdate(findCondition, {$set: requestParsed}, {new:true});
+                const modelAfter = await this.findOneAndUpdate(findCondition, requestParsed, {new:true});
                 return this.sendResponseForModel(res, modelAfter, 200);
             } else {
                 return this.sendResponseForModel(res, null);
